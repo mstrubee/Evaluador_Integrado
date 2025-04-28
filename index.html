@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluador de Restaurante</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .col {
+      flex: 1;
+      min-width: 280px;
+    }
+    label, input {
+      display: block;
+      margin-bottom: 10px;
+    }
+    input[type="number"] {
+      width: 100%;
+    }
+    table {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td, th {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<div class="col">
+  <h2>Evaluador de Restaurante</h2>
+
+  <label>Ventas mensuales (en millones):
+    <input type="number" id="ventasBase" value="50">
+  </label>
+  <p><strong>Ventas con IVA:</strong> $<span id="ventasIVA">0</span></p>
+  <p><strong>Ventas netas:</strong> $<span id="netoMostrar">0</span></p>
+
+  <label>Inversión inicial (en millones):
+    <input type="number" id="inversion" value="10">
+  </label>
+  <p><strong>Inversión inicial:</strong> $<span id="inversionMonto">0</span></p>
+
+  <h3>Porcentajes de gasto</h3>
+  <label>Insumos y producción (%): <input type="number" id="insumos" value="38.5"></label>
+  <p>Valor: $<span id="gastoInsumos">0</span></p>
+
+  <label>Remuneraciones (%): <input type="number" id="remuneraciones" value="20"></label>
+  <p>Valor: $<span id="gastoRem">0</span></p>
+
+  <label>Dieta Directorio (%): <input type="number" id="dieta" value="20"></label>
+  <p>Valor: $<span id="gastoDieta">0</span></p>
+
+  <label>Arriendo (en millones): <input type="number" id="arriendoFijo" value="5"></label>
+  <p>Valor: $<span id="gastoArriendo">0</span> (<span id="porcArriendo
