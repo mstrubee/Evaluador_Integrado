@@ -2,103 +2,155 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Evaluador Restaurante</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluador de Restaurante</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    label, input { display: block; margin-bottom: 10px; }
-    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: right; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .col {
+      flex: 1;
+      min-width: 280px;
+    }
+    label, input {
+      display: block;
+      margin-bottom: 10px;
+    }
+    input[type="number"] {
+      width: 100%;
+    }
+    table {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td, th {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: right;
+    }
   </style>
 </head>
 <body>
 
-<h2>Evaluador de Restaurante</h2>
+<div class="col">
+  <h2>Evaluador de Restaurante</h2>
 
-<label>Ventas mensuales (en millones):
-  <input type="number" id="ventasBase" value="50">
-</label>
-<p>Ventas con IVA: $<span id="ventasIVA">-</span></p>
-<p>Ventas netas: $<span id="ventasNetas">-</span></p>
+  <label>Ventas mensuales (en millones):
+    <input type="number" id="ventasBase" value="50">
+  </label>
+  <p><strong>Ventas con IVA:</strong> $<span id="ventasIVA">0</span></p>
+  <p><strong>Ventas netas:</strong> $<span id="netoMostrar">0</span></p>
 
-<label>Inversión inicial (en millones):
-  <input type="number" id="inversion" value="10">
-</label>
-<p>Inversión inicial: $<span id="inversionMonto">-</span></p>
+  <label>Inversión inicial (en millones):
+    <input type="number" id="inversion" value="10">
+  </label>
+  <p><strong>Inversión inicial:</strong> $<span id="inversionMonto">0</span></p>
 
-<label>Arriendo mensual (en millones):
-  <input type="number" id="arriendoFijo" value="5">
-</label>
-<p>Arriendo: $<span id="arriendoMonto">-</span> (<span id="porcArriendo">-</span>% de ventas netas)</p>
+  <h3>Porcentajes de gasto</h3>
+  <label>Insumos y producción (%): <input type="number" id="insumos" value="38.5"></label>
+  <p>Valor: $<span id="gastoInsumos">0</span></p>
 
-<table>
-  <thead>
-    <tr>
-      <th>Mes</th>
-      <th>% Estacionalidad</th>
-      <th>Flujo estimado</th>
-    </tr>
-  </thead>
-  <tbody id="tablaEstacionalidad"></tbody>
-</table>
+  <label>Remuneraciones (%): <input type="number" id="remuneraciones" value="20"></label>
+  <p>Valor: $<span id="gastoRem">0</span></p>
 
-<p>Flujo mensual estimado: $<span id="flujoMensual">-</span></p>
-<p>Flujo anual ajustado: $<span id="flujoAnual">-</span></p>
-<p>ROI estimado: <span id="roi">-</span>%</p>
-<p>Payback estimado: <span id="payback">-</span> meses</p>
+  <label>Dieta Directorio (%): <input type="number" id="dieta" value="20"></label>
+  <p>Valor: $<span id="gastoDieta">0</span></p>
+
+  <label>Arriendo (%): <input type="number" id="arriendo" value="10"></label>
+  <p>Valor: $<span id="gastoArriendo">0</span></p>
+
+  <label>Servicios (%): <input type="number" id="servicios" value="3"></label>
+  <p>Valor: $<span id="gastoServicios">0</span></p>
+
+  <h3>Estacionalidad mensual (%)</h3>
+  <div id="meses"></div>
+</div>
+
+<div class="col">
+  <h3>Resultados</h3>
+  <div id="resultados"></div>
+</div>
 
 <script>
-const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
-const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const mesesNombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93]; // Estacionalidad por mes
+let mesesDiv = document.getElementById("meses");
 
-function formatear(valor) {
-  return valor.toLocaleString('es-CL');
-}
-
-function calcular() {
-  const ventasMillones = parseFloat(document.getElementById('ventasBase').value) || 0;
-  const inversionMillones = parseFloat(document.getElementById('inversion').value) || 0;
-  const arriendoMillones = parseFloat(document.getElementById('arriendoFijo').value) || 0;
-
-  const ventasIVA = ventasMillones * 1_000_000;
-  const ventasNetas = ventasIVA / 1.19;
-  const inversion = inversionMillones * 1_000_000;
-  const arriendo = arriendoMillones * 1_000_000;
-
-  const porcArriendo = (arriendo / ventasNetas) * 100;
-
-  const gastos = ventasNetas * (0.385 + 0.20 + 0.20 + 0.03) + arriendo;
-  const flujoMensual = ventasNetas - gastos;
-
-  let flujoAnual = 0;
-  let tablaHTML = '';
-  estacionalidad.forEach((porc, i) => {
-    const flujoMes = flujoMensual * (porc / 100);
-    flujoAnual += flujoMes;
-    tablaHTML += `<tr><td>${meses[i]}</td><td>${porc}%</td><td>$${formatear(flujoMes.toFixed(0))}</td></tr>`;
-  });
-
-  const roi = (flujoAnual / inversion) * 100;
-  const payback = inversion / flujoMensual;
-
-  document.getElementById('ventasIVA').textContent = formatear(ventasIVA);
-  document.getElementById('ventasNetas').textContent = formatear(ventasNetas);
-  document.getElementById('inversionMonto').textContent = formatear(inversion);
-  document.getElementById('arriendoMonto').textContent = formatear(arriendo);
-  document.getElementById('porcArriendo').textContent = porcArriendo.toFixed(1);
-
-  document.getElementById('flujoMensual').textContent = formatear(flujoMensual.toFixed(0));
-  document.getElementById('flujoAnual').textContent = formatear(flujoAnual.toFixed(0));
-  document.getElementById('roi').textContent = roi.toFixed(2);
-  document.getElementById('payback').textContent = payback.toFixed(1);
-
-  document.getElementById('tablaEstacionalidad').innerHTML = tablaHTML;
-}
-
-document.querySelectorAll('input').forEach(input => {
-  input.addEventListener('input', calcular);
+mesesNombres.forEach((mes, i) => {
+  let input = document.createElement("input");
+  input.type = "number";
+  input.id = "mes" + i;
+  input.value = estacionalidad[i]; // Establecer el valor predeterminado según los porcentajes de estacionalidad
+  input.style.marginRight = "10px";
+  input.addEventListener("input", calcular);
+  mesesDiv.appendChild(document.createTextNode(mes + ": "));
+  mesesDiv.appendChild(input);
 });
 
-window.addEventListener('DOMContentLoaded', calcular);
+["ventasBase", "inversion", "insumos", "remuneraciones", "dieta", "arriendo", "servicios"].forEach(id =>
+  document.getElementById(id).addEventListener("input", calcular)
+);
+
+function calcular() {
+  const millonesVentas = parseFloat(document.getElementById("ventasBase").value) || 0;
+  const ventasIVA = millonesVentas * 1_000_000;
+  const millonesInversion = parseFloat(document.getElementById("inversion").value) || 0;
+  const inversion = millonesInversion * 1_000_000;
+  const neto = ventasIVA / 1.19;
+
+  document.getElementById("ventasIVA").textContent = ventasIVA.toLocaleString();
+  document.getElementById("netoMostrar").textContent = neto.toFixed(0).toLocaleString();
+  document.getElementById("inversionMonto").textContent = inversion.toLocaleString();
+
+  const p_insumos = parseFloat(document.getElementById("insumos").value) / 100;
+  const p_rem = parseFloat(document.getElementById("remuneraciones").value) / 100;
+  const p_dieta = parseFloat(document.getElementById("dieta").value) / 100;
+  const p_arriendo = parseFloat(document.getElementById("arriendo").value) / 100;
+  const p_serv = parseFloat(document.getElementById("servicios").value) / 100;
+
+  const g_insumos = neto * p_insumos;
+  const g_rem = neto * p_rem;
+  const g_dieta = neto * p_dieta;
+  const g_arriendo = neto * p_arriendo;
+  const g_serv = neto * p_serv;
+
+  document.getElementById("gastoInsumos").textContent = g_insumos.toFixed(0).toLocaleString();
+  document.getElementById("gastoRem").textContent = g_rem.toFixed(0).toLocaleString();
+  document.getElementById("gastoDieta").textContent = g_dieta.toFixed(0).toLocaleString();
+  document.getElementById("gastoArriendo").textContent = g_arriendo.toFixed(0).toLocaleString();
+  document.getElementById("gastoServicios").textContent = g_serv.toFixed(0).toLocaleString();
+
+  const gastos = g_insumos + g_rem + g_dieta + g_arriendo + g_serv;
+  const flujoMensual = neto - gastos;
+
+  let totalAnual = 0;
+  let tabla = `<table><tr><th>Mes</th><th>%</th><th>Flujo</th></tr>`;
+  for (let i = 0; i < 12; i++) {
+    let est = parseFloat(document.getElementById("mes" + i).value) / 100;
+    let flujoMes = flujoMensual * est;
+    totalAnual += flujoMes;
+    tabla += `<tr><td>${mesesNombres[i]}</td><td>${(est*100).toFixed(1)}%</td><td>$${flujoMes.toFixed(0).toLocaleString()}</td></tr>`;
+  }
+  tabla += "</table>";
+
+  const ROI = (totalAnual / inversion) * 100;
+  const paybackMeses = inversion / flujoMensual;
+
+  document.getElementById("resultados").innerHTML = `
+    <p><strong>Flujo mensual promedio:</strong> $${flujoMensual.toFixed(0).toLocaleString()}</p>
+    ${tabla}
+    <p><strong>Flujo anual ajustado:</strong> $${totalAnual.toFixed(0).toLocaleString()}</p>
+    <p><strong>Retorno sobre inversión (ROI):</strong> ${ROI.toFixed(2)}%</p>
+    <p><strong>Payback (meses):</strong> ${paybackMeses.toFixed(1)}</p>
+  `;
+}
+
+window.addEventListener("DOMContentLoaded", calcular);
 </script>
 
 </body>
