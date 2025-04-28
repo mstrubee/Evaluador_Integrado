@@ -62,4 +62,103 @@
   <p>Valor: $<span id="gastoDieta">0</span></p>
 
   <label>Arriendo (en millones): <input type="number" id="arriendoFijo" value="5"></label>
-  <p>Valor: $<span id="gastoArriendo">0</span> (<span id="porcArriendo
+  <p>Valor: $<span id="gastoArriendo">0</span> (<span id="porcArriendo">0</span>% de ventas netas)</p>
+
+  <label>Servicios (%): <input type="number" id="servicios" value="3"></label>
+  <p>Valor: $<span id="gastoServicios">0</span></p>
+
+  <h3>Estacionalidad mensual (%)</h3>
+  <div id="meses"></div>
+</div>
+
+<div class="col">
+  <h3>Resultados</h3>
+  <div id="resultados"></div>
+</div>
+
+<script>
+const mesesNombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
+let mesesDiv = document.getElementById("meses");
+
+mesesNombres.forEach((mes, i) => {
+  let input = document.createElement("input");
+  input.type = "number";
+  input.id = "mes" + i;
+  input.value = estacionalidad[i];
+  input.style.marginRight = "10px";
+  input.addEventListener("input", calcular);
+  mesesDiv.appendChild(document.createTextNode(mes + ": "));
+  mesesDiv.appendChild(input);
+});
+
+["ventasBase", "inversion", "insumos", "remuneraciones", "dieta", "arriendoFijo", "servicios"].forEach(id =>
+  document.getElementById(id).addEventListener("input", calcular)
+);
+
+function formatear(valor) {
+  return valor.toLocaleString('es-CL');
+}
+
+function calcular() {
+  const millonesVentas = parseFloat(document.getElementById("ventasBase").value) || 0;
+  const ventasIVA = millonesVentas * 1_000_000;
+  const millonesInversion = parseFloat(document.getElementById("inversion").value) || 0;
+  const inversion = millonesInversion * 1_000_000;
+  const neto = ventasIVA / 1.19;
+
+  document.getElementById("ventasIVA").textContent = formatear(ventasIVA);
+  document.getElementById("netoMostrar").textContent = formatear(neto);
+  document.getElementById("inversionMonto").textContent = formatear(inversion);
+
+  const p_insumos = parseFloat(document.getElementById("insumos").value) / 100;
+  const p_rem = parseFloat(document.getElementById("remuneraciones").value) / 100;
+  const p_dieta = parseFloat(document.getElementById("dieta").value) / 100;
+  const p_serv = parseFloat(document.getElementById("servicios").value) / 100;
+
+  const g_insumos = neto * p_insumos;
+  const g_rem = neto * p_rem;
+  const g_dieta = neto * p_dieta;
+  const g_serv = neto * p_serv;
+
+  const millonesArriendo = parseFloat(document.getElementById("arriendoFijo").value) || 0;
+  const g_arriendo = millonesArriendo * 1_000_000;
+  const porc_arriendo = (g_arriendo / neto) * 100;
+
+  document.getElementById("gastoInsumos").textContent = formatear(g_insumos);
+  document.getElementById("gastoRem").textContent = formatear(g_rem);
+  document.getElementById("gastoDieta").textContent = formatear(g_dieta);
+  document.getElementById("gastoServicios").textContent = formatear(g_serv);
+  document.getElementById("gastoArriendo").textContent = formatear(g_arriendo);
+  document.getElementById("porcArriendo").textContent = porc_arriendo.toFixed(2);
+
+  const gastos = g_insumos + g_rem + g_dieta + g_arriendo + g_serv;
+  const flujoMensual = neto - gastos;
+
+  let totalAnual = 0;
+  let tabla = `<table><tr><th>Mes</th><th>%</th><th>Flujo</th></tr>`;
+  for (let i = 0; i < 12; i++) {
+    let est = parseFloat(document.getElementById("mes" + i).value) / 100;
+    let flujoMes = flujoMensual * est;
+    totalAnual += flujoMes;
+    tabla += `<tr><td>${mesesNombres[i]}</td><td>${(est*100).toFixed(1)}%</td><td>$${formatear(flujoMes.toFixed(0))}</td></tr>`;
+  }
+  tabla += "</table>";
+
+  const ROI = (totalAnual / inversion) * 100;
+  const paybackMeses = inversion / flujoMensual;
+
+  document.getElementById("resultados").innerHTML = `
+    <p><strong>Flujo mensual promedio:</strong> $${formatear(flujoMensual.toFixed(0))}</p>
+    ${tabla}
+    <p><strong>Flujo anual ajustado:</strong> $${formatear(totalAnual.toFixed(0))}</p>
+    <p><strong>Retorno sobre inversión (ROI):</strong> ${ROI.toFixed(2)}%</p>
+    <p><strong>Payback (meses):</strong> ${paybackMeses.toFixed(1)}</p>
+  `;
+}
+
+window.addEventListener("DOMContentLoaded", calcular);
+</script>
+
+</body>
+</html>
