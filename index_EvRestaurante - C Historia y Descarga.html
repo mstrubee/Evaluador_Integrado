@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>Evaluador Restaurante</title>
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; }
+    label { font-weight: bold; margin-top: 15px; display: block; }
+    input[type="number"] { width: 100%; padding: 6px; margin-bottom: 10px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+    th { background-color: #f2f2f2; }
+    td input { width: 60px; }
+    canvas { margin-top: 40px; }
+  </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head>
+<body>
+<nav style="background-color:#f8f9fa; padding:10px; margin-bottom:20px; display:flex; justify-content:space-between;">
+<button onclick="guardarComoPredeterminado()" style="padding:6px 12px; margin-left:10px;">Guardar</button><button onclick="guardarConfiguracion()" style="padding:6px 12px;">Guardar en Historial</button>
+<div style="position:relative;">
+<button onclick="toggleHistorial()" style="padding:6px 12px;">Historial ▼</button>
+<ul id="menu_historial" style="position:absolute; top:100%; right:0; background:#fff; border:1px solid #ccc; list-style:none; padding:10px; margin:0; display:none; min-width:480px; max-height:300px; overflow-y:auto; z-index:1000;"></ul>
+</div>
+<button onclick="descargarPDF()" style="padding:6px 12px; margin-left:10px;">Descargar PDF</button></nav>
+<h2>Evaluador de Restaurante</h2>
+<label>Ventas Mensuales (en millones de CLP):
+  <input id="ventasBase" type="number" value="60"/>
+</label>
+<p>Ventas mensuales con IVA: $<span id="ventasIVA">-</span></p>
+<p>Ventas netas: $<span id="ventasNetas">-</span></p>
+<p>Ventas diarias promedio: $<span id="ventasDiarias">-</span></p>
+<label>Derecho de Llaves (en millones de CLP):
+  <input id="derechoBase" type="number" value="120"/>
+</label>
+<label>Remodelación (en millones de CLP):
+  <input id="remodelacionBase" type="number" value="40"/>
+</label>
+<p>Inversión total: $<span id="inversionMonto">-</span></p>
+<label>Arriendo mensual (en millones de CLP):
+  <input id="arriendoBase" type="number" value="6"/>
+</label>
+<p>Arriendo mensual: $<span id="arriendoMonto">-</span> (<span id="porcArriendo">-</span>% de ventas netas)</p>
+<label>Remuneraciones (en millones de CLP):
+  <input id="remuneracionesBase" type="number" value="8"/>
+</label>
+<p>Remuneraciones: $<span id="remuneracionesMonto">-</span> (<span id="porcRemuneraciones">-</span>% de ventas netas)</p>
+<label>% Insumos y producción:
+  <input id="insumosPct" step="0.1" type="number" value="38.5"/>
+</label>
+<p id="insumosMonto">Monto: $-</p>
+<label>% Dieta Directorio:
+  <input id="dietaPct" step="0.1" type="number" value="20"/>
+</label>
+<p id="dietaMonto">Monto: $-</p>
+<label>% Cuentas de Servicios:
+  <input id="serviciosPct" step="0.1" type="number" value="3"/>
+</label>
+<p id="serviciosMonto">Monto: $-</p>
+<h3>Gastos calculados</h3>
+<p>Arriendo mensual: $<span id="arriendoGasto">-</span> (<span id="porcArriendoGasto">-</span>% de ventas netas)</p>
+<p>Remuneraciones: $<span id="remuneracionesGasto">-</span> (<span id="porcRemuneracionesGasto">-</span>% de ventas netas)</p>
+<p>Insumos y producción: $<span id="insumos">-</span> (<span id="porcInsumos">-</span>% de ventas netas)</p>
+<p>Dieta Directorio: $<span id="dieta">-</span> (<span id="porcDieta">-</span>% de ventas netas)</p>
+<p>Cuentas de servicios: $<span id="servicios">-</span> (<span id="porcServicios">-</span>% de ventas netas)</p>
+<p><strong>Subtotal de gastos calculados:</strong> $<span id="subtotalGastos">-</span> (<span id="porcSubtotalGastos">-</span>% de ventas netas)</p>
+<h3>Resultados</h3>
+<p>Flujo mensual: $<span id="flujoMensual">-</span></p>
+<p>Flujo anual: $<span id="flujoAnualBase">-</span></p>
+<p>Retorno de inversión (ROI): <span id="roi">-</span>%</p>
+<p>Payback: <span id="payback">-</span> meses</p>
+<h3>Estacionalidad</h3>
+<table>
+<thead>
+<tr>
+<th>Mes</th>
+<th>Días</th>
+<th>%</th>
+<th>Ventas Diarias</th>
+<th>Ventas Mensuales</th>
+<th>Flujo Diario</th>
+<th>Flujo Mensual</th>
+</tr>
+</thead>
+<tbody id="tablaEstacionalidad"></tbody>
+<tfoot>
+<tr>
+<td><strong>Promedio</strong></td>
+<td id="promDias">-</td>
+<td id="promPct">-</td>
+<td id="promVentasDiarias">-</td>
+<td id="promVentasMensuales">-</td>
+<td id="promFlujoDiario">-</td>
+<td id="promFlujoMensual">-</td>
+</tr>
+</tfoot>
+</table>
+<h3>Resultados ajustados por estacionalidad</h3>
+<p>Flujo mensual promedio: $<span id="flujoMensualEstacional">-</span></p>
+<p>Flujo anual (ajustado por estacionalidad): $<span id="flujoAnualEstacional">-</span></p>
+<p>ROI con estacionalidad: <span id="roiEstacional">-</span>%</p>
+<p>Payback con estacionalidad: <span id="paybackEstacional">-</span> meses</p>
+<canvas id="graficoEstacionalidad"></canvas>
+<script>
+const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+               'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function formatCLP(number) {
+  return Number(Math.round(number)).toLocaleString('es-CL');
+}
+
+function formatMillions(number) {
+  return (number / 1_000_000).toFixed(1) + " MM$";
+}
+
+let grafico;
+
+function generarTablaEstacionalidad() {
+  const tbody = document.getElementById('tablaEstacionalidad');
+  tbody.innerHTML = '';
+  estacionalidad.forEach((pct, i) => {
+    const dias = diasPorMes[i];
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${meses[i]}</td>
+      <td>${dias}</td>
+      <td><input type="number" min="0" max="150" value="${pct}" data-index="${i}" class="input-estacionalidad"></td>
+      <td class="ventas-dia"></td>
+      <td class="ventas-mes"></td>
+      <td class="flujo-dia"></td>
+      <td class="flujo-mes"></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.querySelectorAll('.input-estacionalidad').forEach(input => {
+    input.addEventListener('input', e => {
+      const index = parseInt(e.target.dataset.index);
+      estacionalidad[index] = parseFloat(e.target.value) || 0;
+      calcular();
+    });
+  });
+}
+
+function calcular() {
+  const ventasBase = parseFloat(document.getElementById('ventasBase').value) || 0;
+  const derechoBase = parseFloat(document.getElementById('derechoBase').value) || 0;
+  const remodelacionBase = parseFloat(document.getElementById('remodelacionBase').value) || 0;
+  const inversion = (derechoBase + remodelacionBase) * 1_000_000;
+  const arriendoBase = parseFloat(document.getElementById('arriendoBase').value) || 0;
+  const remuneracionesBase = parseFloat(document.getElementById('remuneracionesBase').value) || 0;
+
+  const insumosPct = parseFloat(document.getElementById('insumosPct').value) || 38.5;
+  const dietaPct = parseFloat(document.getElementById('dietaPct').value) || 20;
+  const serviciosPct = parseFloat(document.getElementById('serviciosPct').value) || 3;
+
+  const ventasIVA = ventasBase * 1_000_000;
+  const ventasNetas = ventasIVA / 1.19;
+  const ventasDiarias = ventasNetas / 30;
+  const arriendo = arriendoBase * 1_000_000;
+  const remuneraciones = remuneracionesBase * 1_000_000;
+
+  const insumos = ventasNetas * (insumosPct / 100);
+  const dieta = ventasNetas * (dietaPct / 100);
+  const servicios = ventasNetas * (serviciosPct / 100);
+
+  document.getElementById('insumosMonto').textContent = `Monto: $${formatCLP(insumos)}`;
+  document.getElementById('dietaMonto').textContent = `Monto: $${formatCLP(dieta)}`;
+  document.getElementById('serviciosMonto').textContent = `Monto: $${formatCLP(servicios)}`;
+
+  const totalGastos = insumos + remuneraciones + dieta + servicios + arriendo;
+  const flujoMensual = ventasNetas - totalGastos;
+
+  let flujoAnual = 0;
+  let rows = document.querySelectorAll('#tablaEstacionalidad tr');
+
+  let totalDias = 0, totalPct = 0, totalVentasDia = 0, totalVentasMes = 0;
+  let totalFlujoDia = 0, totalFlujoMes = 0;
+
+  estacionalidad.forEach((pct, i) => {
+    const dias = diasPorMes[i];
+    const ventasMes = ventasNetas * (pct / 100);
+    const ventasDia = ventasMes / dias;
+    const flujoMes = ventasMes - (
+      (ventasMes * (insumosPct / 100)) +
+      remuneraciones +
+      (ventasMes * (dietaPct / 100)) +
+      (ventasMes * (serviciosPct / 100)) +
+      arriendo
+    );
+    const flujoDia = flujoMes / dias;
+
+    flujoAnual += flujoMes;
+
+    const cells = rows[i].querySelectorAll('td');
+    cells[3].textContent = `$${formatCLP(ventasDia)}`;
+    cells[4].textContent = `$${formatCLP(ventasMes)}`;
+    cells[5].textContent = `$${formatCLP(flujoDia)}`;
+    cells[6].textContent = `$${formatCLP(flujoMes)}`;
+
+    totalDias += dias;
+    totalPct += pct;
+    totalVentasDia += ventasDia;
+    totalVentasMes += ventasMes;
+    totalFlujoDia += flujoDia;
+    totalFlujoMes += flujoMes;
+  });
+
+  document.getElementById('ventasIVA').textContent = formatCLP(ventasIVA);
+  document.getElementById('ventasNetas').textContent = formatCLP(ventasNetas);
+  document.getElementById('ventasDiarias').textContent = formatCLP(ventasDiarias);
+  document.getElementById('inversionMonto').textContent = formatCLP(inversion);
+  document.getElementById('arriendoMonto').textContent = formatCLP(arriendo);
+  document.getElementById('remuneracionesMonto').textContent = formatCLP(remuneraciones);
+
+  document.getElementById('porcArriendo').textContent = Math.round((arriendo / ventasNetas) * 100);
+  document.getElementById('porcRemuneraciones').textContent = Math.round((remuneraciones / ventasNetas) * 100);
+
+  document.getElementById('insumos').textContent = formatCLP(insumos);
+  document.getElementById('dieta').textContent = formatCLP(dieta);
+  document.getElementById('servicios').textContent = formatCLP(servicios);
+
+  document.getElementById('arriendoGasto').textContent = formatCLP(arriendo);
+  document.getElementById('remuneracionesGasto').textContent = formatCLP(remuneraciones);
+  document.getElementById('porcArriendoGasto').textContent = Math.round((arriendo / ventasNetas) * 100);
+  document.getElementById('porcRemuneracionesGasto').textContent = Math.round((remuneraciones / ventasNetas) * 100);
+  document.getElementById('porcInsumos').textContent = Math.round((insumos / ventasNetas) * 100);
+  document.getElementById('porcDieta').textContent = Math.round((dieta / ventasNetas) * 100);
+  document.getElementById('porcServicios').textContent = Math.round((servicios / ventasNetas) * 100);
+
+  document.getElementById('porcSubtotalGastos').textContent = Math.round((totalGastos / ventasNetas) * 100);
+document.getElementById('subtotalGastos').textContent = formatCLP(totalGastos);
+  document.getElementById('flujoMensual').textContent = formatCLP(flujoMensual);
+  document.getElementById('flujoAnualBase').textContent = formatCLP(flujoMensual * 12);
+  document.getElementById('flujoAnualEstacional').textContent = formatCLP(flujoAnual);
+  document.getElementById('flujoMensualEstacional').textContent = formatCLP(flujoAnual / 12);
+
+  document.getElementById('roi').textContent = Math.round((flujoMensual * 12 / inversion) * 100);
+  document.getElementById('payback').textContent = Math.round(inversion / flujoMensual);
+
+  document.getElementById('roiEstacional').textContent = Math.round((flujoAnual / inversion) * 100);
+  document.getElementById('paybackEstacional').textContent = Math.round(inversion / (flujoAnual / 12));
+
+  document.getElementById('promDias').textContent = Math.round(totalDias / 12);
+  document.getElementById('promPct').textContent = Math.round(totalPct / 12);
+  document.getElementById('promVentasDiarias').textContent = formatCLP(totalVentasDia / 12);
+  document.getElementById('promVentasMensuales').textContent = formatCLP(totalVentasMes / 12);
+  document.getElementById('promFlujoDiario').textContent = formatCLP(totalFlujoDia / 12);
+  document.getElementById('promFlujoMensual').textContent = formatCLP(totalFlujoMes / 12);
+
+  if (grafico) grafico.destroy();
+  grafico = new Chart(document.getElementById('graficoEstacionalidad'), {
+    type: 'bar',
+    data: {
+      labels: meses,
+      datasets: [{
+        label: 'Flujo mensual ajustado',
+        data: estacionalidad.map((pct, i) => {
+          const ventasMes = ventasNetas * (pct / 100);
+          return ventasMes - (
+            (ventasMes * (insumosPct / 100)) +
+            remuneraciones +
+            (ventasMes * (dietaPct / 100)) +
+            (ventasMes * (serviciosPct / 100)) +
+            arriendo
+          );
+        }),
+        backgroundColor: '#4CAF50',
+        borderColor: '#388E3C',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(tooltipItem) {
+              const data = tooltipItem.raw;
+              const monthIndex = tooltipItem.dataIndex;
+              const estacionalidadPct = estacionalidad[monthIndex];
+              return [`Estacionalidad: ${estacionalidadPct}%`, `Monto: ${formatMillions(data)}`];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+document.querySelectorAll('input').forEach(input => {
+  input.addEventListener('input', calcular);
+});
+
+window.onload = function() {
+  generarTablaEstacionalidad();
+  calcular();
+};
+</script>
+<script>
+function guardarConfiguracion() {
+  const nombre = prompt("Ingresa un nombre para esta configuración:");
+  if (!nombre) return;
+
+  const inputs = document.querySelectorAll('input');
+  const valores = {};
+  inputs.forEach(input => {
+    valores[input.id] = input.value;
+  });
+
+  const estacionalidad = Array.from(document.querySelectorAll('.input-estacionalidad')).map(input => input.value);
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-CL') + ' ' + now.toLocaleTimeString('es-CL', { hour12: false });
+
+  let historial = JSON.parse(localStorage.getItem("historialRestaurante") || "{}");
+  if (historial[nombre]) {
+    if (!confirm("Ya existe una configuración con ese nombre. ¿Deseas reemplazarla?")) return;
+  }
+  historial[nombre] = { fecha, valores, estacionalidad };
+  localStorage.setItem("historialRestaurante", JSON.stringify(historial));
+  localStorage.setItem("ultimaConfigRestaurante", JSON.stringify({ nombre, fecha, valores, estacionalidad }));
+  alert("Configuración guardada como: " + nombre);
+  actualizarHistorial();
+}
+
+function cargarConfiguracion(nombre) {
+  const historial = JSON.parse(localStorage.getItem("historialRestaurante") || "{}");
+  const config = historial[nombre];
+  if (!config) return;
+
+  for (const id in config.valores) {
+    const input = document.getElementById(id);
+    if (input) {
+      input.value = config.valores[id];
+    }
+  }
+
+  document.querySelectorAll('.input-estacionalidad').forEach((input, i) => {
+    input.value = config.estacionalidad[i];
+  });
+
+  calcular();
+}
+
+function eliminarSeleccionados() {
+  const checks = document.querySelectorAll('.historial-checkbox:checked');
+  let historial = JSON.parse(localStorage.getItem("historialRestaurante") || "{}");
+  checks.forEach(checkbox => {
+    delete historial[checkbox.value];
+  });
+  localStorage.setItem("historialRestaurante", JSON.stringify(historial));
+  actualizarHistorial();
+}
+
+function eliminarTodoHistorial() {
+  if (confirm("¿Estás seguro de que deseas borrar todo el historial?")) {
+    localStorage.removeItem("historialRestaurante");
+    actualizarHistorial();
+  }
+}
+
+function actualizarHistorial() {
+  const menu = document.getElementById("menu_historial");
+  if (!menu) return;
+  menu.innerHTML = "";
+
+  const historial = JSON.parse(localStorage.getItem("historialRestaurante") || "{}");
+  const nombres = Object.keys(historial).sort((a, b) => {
+    return new Date(historial[b].fecha) - new Date(historial[a].fecha);
+  });
+  if (nombres.length === 0) {
+    menu.innerHTML = '<li style="color:#777;">(Sin configuraciones guardadas)</li>';
+    return;
+  }
+
+  nombres.forEach(nombre => {
+    const item = document.createElement("li");
+    item.style.marginBottom = "8px";
+    const entry = historial[nombre];
+
+    const contenedor = document.createElement("div");
+    contenedor.className = "d-flex justify-content-between align-items-center";
+
+    const info = document.createElement("span");
+    info.innerHTML = `<input type="checkbox" class="historial-checkbox me-2" value="${nombre}"><strong>${nombre}</strong> (${entry.fecha})`;
+
+    const btns = document.createElement("div");
+
+    const btnCargar = document.createElement("button");
+    btnCargar.textContent = "Cargar";
+    btnCargar.className = "btn btn-sm btn-success me-1";
+    btnCargar.onclick = () => cargarConfiguracion(nombre);
+
+    btns.appendChild(btnCargar);
+
+    contenedor.appendChild(info);
+    contenedor.appendChild(btns);
+    item.appendChild(contenedor);
+    menu.appendChild(item);
+  });
+
+  const sep = document.createElement("hr");
+  menu.appendChild(sep);
+
+  const btnBorrarSeleccionados = document.createElement("button");
+  btnBorrarSeleccionados.textContent = "Eliminar seleccionados";
+  btnBorrarSeleccionados.className = "dropdown-item text-danger";
+  btnBorrarSeleccionados.onclick = eliminarSeleccionados;
+
+  const btnBorrarTodo = document.createElement("button");
+  btnBorrarTodo.textContent = "Borrar todo el historial";
+  btnBorrarTodo.className = "dropdown-item text-danger";
+  btnBorrarTodo.onclick = eliminarTodoHistorial;
+
+  const li1 = document.createElement("li");
+  const li2 = document.createElement("li");
+  li1.appendChild(btnBorrarSeleccionados);
+  li2.appendChild(btnBorrarTodo);
+  menu.appendChild(li1);
+  menu.appendChild(li2);
+}
+
+function toggleHistorial() {
+  const menu = document.getElementById("menu_historial");
+  menu.style.display = (menu.style.display === "block") ? "none" : "block";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  actualizarHistorial();
+  const ultima = JSON.parse(localStorage.getItem("ultimaConfigRestaurante") || "null");
+  if (ultima) {
+    for (const id in ultima.valores) {
+      const input = document.getElementById(id);
+      if (input) {
+        input.value = ultima.valores[id];
+      }
+    }
+    document.querySelectorAll('.input-estacionalidad').forEach((input, i) => {
+      input.value = ultima.estacionalidad[i];
+    });
+  }
+  calcular();
+});
+
+
+function guardarComoPredeterminado() {
+  const inputs = document.querySelectorAll('input');
+  const valores = {};
+  inputs.forEach(input => {
+    valores[input.id] = input.value;
+  });
+
+  const estacionalidad = Array.from(document.querySelectorAll('.input-estacionalidad')).map(input => input.value);
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-CL') + ' ' + now.toLocaleTimeString('es-CL', { hour12: false });
+
+  const config = { nombre: "Último", fecha, valores, estacionalidad };
+  localStorage.setItem("ultimaConfigRestaurante", JSON.stringify(config));
+  alert("Configuración guardada como predeterminada.");
+}
+</script><script>
+async function descargarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text("Resumen Evaluación Restaurante", 20, 20);
+  doc.setFontSize(11);
+
+  let y = 30;
+
+  const secciones = [
+    { titulo: "Ventas", campos: [
+      { label: "Ventas Mensuales Brutas", id: "ventasBrutas", simbolo: "$" },
+      { label: "Ventas Mensuales con IVA", id: "ventasConIVA", simbolo: "$" },
+
+      { label: "Ventas Mensuales Netas", id: "ventasNetas", simbolo: "$" }
+    ]},
+    { titulo: "Inversión Inicial", campos: [
+      { label: "Derecho de Llaves", id: "derechoLlaves", simbolo: "$" },
+      { label: "Remodelación", id: "remodelacion", simbolo: "$" }
+    ]},
+    { titulo: "Gastos Operativos", campos: [
+  { label: "Arriendo Mensual", id: "arriendoMonto", simbolo: "$", porcentajeId: "porcArriendo" },
+  { label: "Remuneraciones", id: "remuneracionesMonto", simbolo: "$", porcentajeId: "porcRemuneraciones" },
+  { label: "Insumos y Producción", id: "insumos", simbolo: "$", porcentajeId: "porcInsumos" },
+  { label: "Dieta Directorio", id: "dieta", simbolo: "$", porcentajeId: "porcDieta" },
+  { label: "Cuentas de Servicios", id: "servicios", simbolo: "$", porcentajeId: "porcServicios" },
+  { label: "Subtotal Gastos Operativos", id: "subtotalGastos", simbolo: "$", porcentajeId: "porcSubtotalGastos" }
+]},
+    { titulo: "Resultados", campos: [
+      { label: "Flujo Mensual", id: "flujoMensual", simbolo: "$" },
+      { label: "Flujo Anual", id: "flujoAnualBase", simbolo: "$" },
+      { label: "Flujo Mensual Promedio", id: "flujoMensualEstacional", simbolo: "$" },
+      { label: "Flujo Anual Ajustado por Estacionalidad", id: "flujoAnual", simbolo: "$" },
+      { label: "Retorno de Inversión (ROI)", id: "roi", simbolo: "%" },
+      { label: "Payback (meses)", id: "payback" }
+    ]},
+    { titulo: "Resultados Ajustados por Estacionalidad", campos: [
+      { label: "Flujo Mensual Promedio", id: "flujoMensualEstacional", simbolo: "$" },
+      { label: "Flujo Anual Ajustado por Estacionalidad", id: "flujoAnualEstacional", simbolo: "$" },
+      { label: "ROI con Estacionalidad", id: "roiEstacional", simbolo: "%" },
+      { label: "Payback con Estacionalidad (meses)", id: "paybackEstacional" }
+    ]}
+  ];
+
+  secciones.forEach(seccion => {
+    doc.setFont(undefined, "bold");
+    doc.text(seccion.titulo, 20, y);
+    y += 6;
+    doc.setFont(undefined, "normal");
+
+    seccion.campos.forEach(campo => {
+      const el = document.getElementById(campo.id);
+      if (el) {
+        let valor = el.textContent.trim();
+        if (valor !== "") {
+          if (campo.simbolo === "$" && !valor.startsWith("$")) valor = "$" + valor;
+          if (campo.simbolo === "%" && !valor.includes("%")) valor += "%";
+          if (campo.porcentajeId) {
+  const p = document.getElementById(campo.porcentajeId);
+  if (p && p.textContent.trim() !== "-") {
+    valor += " (" + p.textContent.trim() + "% de las ventas netas)";
+  }
+}
+doc.text(`${campo.label}: ${valor}`, 25, y);
+          y += 6;
+        }
+      }
+    });
+
+    y += 4;
+  });
+
+  const canvas = document.querySelector("canvas");
+  if (canvas) {
+    const imgData = canvas.toDataURL("image/png");
+    const availableHeight = 270 - y;
+    const scaledHeight = Math.min(70, availableHeight);
+    doc.setFont(undefined, "bold");
+    doc.text("Gráfico de Estacionalidad", 20, y);
+    y += 5;
+    doc.setFont(undefined, "normal");
+    doc.addImage(imgData, "PNG", 15, y, 180, scaledHeight);
+  }
+
+  doc.save("evaluacion_restaurante.pdf");
+}
+</script></body>
+</html>

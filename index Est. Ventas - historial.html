@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<!-- Meta viewport para dispositivos móviles -->
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>VentasApp - Móvil</title>
+<!-- Bootstrap CSS CDN -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+      background-color: #f5f8fa;
+      padding-bottom: 20px;
+    }
+    .navbar {
+      background-color: #4CAF50;
+    }
+    .navbar-brand, .nav-link {
+      color: #fff !important;
+    }
+    .card {
+      margin-bottom: 15px;
+    }
+    .result, #resumen_periodos {
+      background-color: #e6ffe6;
+      border: 1px solid #b3ffb3;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .chart-container {
+      margin-top: 20px;
+    }
+    label {
+      font-weight: 500;
+    }
+    /* Ajustes para pantallas menores (ej. iPhone) */
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+      .card-body, .result {
+        padding: 10px;
+      }
+      .form-label {
+        font-size: 0.9rem;
+      }
+      input.form-control {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg mb-3">
+<div class="container-fluid">
+<a class="navbar-brand" href="#">VentasApp</a>
+<button aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbarNav" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<div class="collapse navbar-collapse" id="navbarNav">
+<ul class="navbar-nav ms-auto">
+<li class="nav-item"><a class="nav-link" href="#" onclick="guardarConfiguracion()">Guardar</a></li>
+<li class="nav-item"><a class="nav-link" href="#" onclick="exportarPDF()">Exportar PDF</a></li>
+</ul>
+</div>
+</div>
+</nav>
+<div class="container mb-3">
+<h5>Historial de Configuraciones</h5>
+<div class="list-group mb-2" id="historial_configuraciones"></div>
+<button class="btn btn-sm btn-danger me-2" onclick="eliminarSeleccionados()">Eliminar seleccionados</button>
+<button class="btn btn-sm btn-secondary" onclick="eliminarTodo()">Borrar todo el historial</button>
+</div>
+
+<!-- Contenedor principal -->
+<div class="container-fluid px-3">
+<h1 class="text-center mb-3">Modelo de Evaluación de Ventas</h1>
+<!-- Parámetros Base en dos columnas -->
+<div class="card">
+<div class="card-body">
+<div class="row g-2">
+<div class="col-6">
+<label class="form-label" for="dias">Días operativos:</label>
+<input class="form-control form-control-sm" id="dias" step="any" type="number" value="28"/>
+</div>
+<div class="col-6">
+<label class="form-label" for="comensales">Comensales:</label>
+<input class="form-control form-control-sm" id="comensales" step="any" type="number" value="200"/>
+</div>
+<div class="col-6">
+<label class="form-label" for="ticket">Ticket Bruto (CLP):</label>
+<input class="form-control form-control-sm" id="ticket" step="any" type="number" value="5990"/>
+</div>
+<div class="col-6">
+<label class="form-label" for="llenados">Llenados/día:</label>
+<input class="form-control form-control-sm" id="llenados" step="any" type="number" value="1"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Estacionalidad en dos columnas -->
+<h2 class="mb-3">Estacionalidad</h2>
+<div class="row row-cols-2 g-2">
+<!-- Cada tarjeta para cada día con inputs pequeños -->
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_lunes">Lunes:</label>
+<input class="form-control form-control-sm" id="est_lunes" step="any" type="number" value="1"/>
+<div class="mt-2" id="info_est_lunes"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_martes">Martes:</label>
+<input class="form-control form-control-sm" id="est_martes" step="any" type="number" value="1"/>
+<div class="mt-2" id="info_est_martes"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_miercoles">Miércoles:</label>
+<input class="form-control form-control-sm" id="est_miercoles" step="any" type="number" value="1"/>
+<div class="mt-2" id="info_est_miercoles"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_jueves">Jueves:</label>
+<input class="form-control form-control-sm" id="est_jueves" step="any" type="number" value="1"/>
+<div class="mt-2" id="info_est_jueves"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_viernes">Viernes:</label>
+<input class="form-control form-control-sm" id="est_viernes" step="any" type="number" value="1"/>
+<div class="mt-2" id="info_est_viernes"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_sabado">Sábado:</label>
+<input class="form-control form-control-sm" id="est_sabado" step="any" type="number" value="0.4"/>
+<div class="mt-2" id="info_est_sabado"></div>
+</div>
+</div>
+</div>
+<div class="col">
+<div class="card">
+<div class="card-body">
+<label class="form-label" for="est_domingo">Domingo:</label>
+<input class="form-control form-control-sm" id="est_domingo" step="any" type="number" value="0"/>
+<div class="mt-2" id="info_est_domingo"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Resumen Semanal y Mensual -->
+<div class="result mb-3" id="resumen_periodos"></div>
+<!-- Resultados Generales -->
+<div class="result mb-3" id="resultados"></div>
+<!-- Gráfico -->
+<div class="chart-container">
+<canvas id="ventasChart"></canvas>
+</div>
+</div>
+<!-- Bootstrap JS Bundle (con Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Formateo de números a formato CLP sin decimales
+    function formatCLP(value) {
+      return value.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    }
+    
+    // Función auxiliar para parsear permitiendo el 0 (si no es número retorna 1)
+    function safeParseFloat(value) {
+      const num = parseFloat(value);
+      return isNaN(num) ? 1 : num;
+    }
+    
+    function calcularVentas() {
+      // Parámetros base
+      const dias = parseFloat(document.getElementById('dias').value) || 0;
+      const comensales = parseFloat(document.getElementById('comensales').value) || 0;
+      const ticket = parseFloat(document.getElementById('ticket').value) || 0;
+      const llenados = parseFloat(document.getElementById('llenados').value) || 0;
+  
+      // Bases de cálculo
+      const baseComensales = comensales * llenados;
+      const baseVentasBrutas = baseComensales * ticket;
+  
+      // Factores de estacionalidad (de lunes a domingo)
+      const estacionalidad = [
+        safeParseFloat(document.getElementById('est_lunes').value),
+        safeParseFloat(document.getElementById('est_martes').value),
+        safeParseFloat(document.getElementById('est_miercoles').value),
+        safeParseFloat(document.getElementById('est_jueves').value),
+        safeParseFloat(document.getElementById('est_viernes').value),
+        safeParseFloat(document.getElementById('est_sabado').value),
+        safeParseFloat(document.getElementById('est_domingo').value)
+      ];
+      
+      // Actualizar información en cada día
+      const diaNames = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+      diaNames.forEach((dia, index) => {
+        const factor = estacionalidad[index];
+        const infoElem = document.getElementById('info_est_' + dia);
+        if (factor === 0) {
+          infoElem.innerText = "CERRADO";
+        } else {
+          const comensalesDia = baseComensales * factor;
+          const ventasNetasDia = (baseVentasBrutas * factor) / 1.19;
+          infoElem.innerText = `Comensales: ${comensalesDia.toFixed(0)} - Ventas Netas: $${formatCLP(ventasNetasDia)}`;
+        }
+      });
+  
+      // Cálculos generales para "dias" operativos
+      const sumaSemanal = estacionalidad.reduce((a, b) => a + b, 0);
+      const semanas = Math.floor(dias / 7);
+      const resto = dias % 7;
+      let totalBrutas = semanas * (baseVentasBrutas * sumaSemanal);
+      for (let i = 0; i < resto; i++){
+        totalBrutas += baseVentasBrutas * estacionalidad[i];
+      }
+      const totalNetas = totalBrutas / 1.19;
+      const promedioBrutas = dias ? totalBrutas / dias : 0;
+      const promedioNetas = dias ? totalNetas / dias : 0;
+  
+      // Resultados generales
+      document.getElementById('resultados').innerHTML = `
+        <strong>Resultados (para ${dias} días operativos):</strong><br>
+        Base de ventas diarias (sin factor estacional): $${formatCLP(baseVentasBrutas)}<br><br>
+        Ventas brutas totales: $${formatCLP(totalBrutas)}<br>
+        Ventas netas totales: $${formatCLP(totalNetas)}<br><br>
+        Promedio diario – Ventas brutas: $${formatCLP(promedioBrutas)} / Ventas netas: $${formatCLP(promedioNetas)}
+      `;
+  
+      // Resumen Semanal (7 días)
+      const weeklyComensales = baseComensales * sumaSemanal;
+      const weeklyVentasBrutas = baseVentasBrutas * sumaSemanal;
+      const weeklyVentasNetas = weeklyVentasBrutas / 1.19;
+      
+      // Resumen Mensual (30 días)
+      const diasMes = 30;
+      const semanasCompletas = Math.floor(diasMes / 7);
+      const diasRestantes = diasMes % 7;
+      let sumaRestante = 0;
+      for (let i = 0; i < diasRestantes; i++) {
+        sumaRestante += estacionalidad[i];
+      }
+      const monthlyFactor = semanasCompletas * sumaSemanal + sumaRestante;
+      const monthlyComensales = baseComensales * monthlyFactor;
+      const monthlyVentasBrutas = baseVentasBrutas * monthlyFactor;
+      const monthlyVentasNetas = monthlyVentasBrutas / 1.19;
+  
+      // Actualizar resumen de períodos
+      document.getElementById('resumen_periodos').innerHTML = `
+        <strong>Resumen Semanal (7 días):</strong><br>
+        Comensales Semanales: ${weeklyComensales.toLocaleString('es-CL', {maximumFractionDigits: 0})}<br>
+        Ventas Brutas Semanales: $${formatCLP(weeklyVentasBrutas)}<br>
+        Ventas Netas Semanales: $${formatCLP(weeklyVentasNetas)}<br><br>
+        <strong>Resumen Mensual (30 días):</strong><br>
+        Comensales Mensuales: ${monthlyComensales.toLocaleString('es-CL', {maximumFractionDigits: 0})}<br>
+        Ventas Brutas Mensuales: $${formatCLP(monthlyVentasBrutas)}<br>
+        Ventas Netas Mensuales: $${formatCLP(monthlyVentasNetas)}
+      `;
+  
+      actualizarGrafico(baseVentasBrutas, estacionalidad);
+    }
+    
+    function actualizarGrafico(ventasBase, estacionalidad) {
+      const ctx = document.getElementById('ventasChart').getContext('2d');
+      if (window.chartInstance) {
+        window.chartInstance.destroy();
+      }
+      
+      const labels = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+      const datosNetas = estacionalidad.map(factor => (ventasBase * factor) / 1.19);
+  
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ventas Netas',
+            data: datosNetas,
+            backgroundColor: '#4CAF50'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const index = context.dataIndex;
+                  const factor = estacionalidad[index];
+                  const valor = context.parsed.y;
+                  if (factor === 0) return "CERRADO";
+                  const valorEnMillones = (valor / 1000000).toFixed(2);
+                  return valorEnMillones + " M";
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '$' + value.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', calcularVentas);
+    });
+    
+    window.addEventListener('DOMContentLoaded', calcularVentas);
+  </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  async function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y = 10;
+
+    function agregarTexto(titulo, contenido) {
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text(titulo, 10, y);
+      y += 7;
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      const lineas = doc.splitTextToSize(contenido, 180);
+      doc.text(lineas, 10, y);
+      y += lineas.length * 6 + 4;
+    }
+
+    const resumen = document.getElementById('resumen_periodos').innerText;
+    const resultados = document.getElementById('resultados').innerText;
+
+    const dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    let detallesDias = "";
+    dias.forEach(dia => {
+      const info = document.getElementById("info_est_" + dia);
+      if (info && info.innerText.trim() !== "") {
+        detallesDias += `${dia.charAt(0).toUpperCase() + dia.slice(1)}: ${info.innerText.trim()}\n`;
+      }
+    });
+
+    agregarTexto("Detalle Diario de Estacionalidad", detallesDias.trim());
+    agregarTexto("Resultados Generales", resultados);
+    agregarTexto("Resumen Semanal y Mensual", resumen);
+
+    // Agregar gráfico al final de la primera hoja (posición fija)
+    const canvas = document.getElementById('ventasChart');
+    if (canvas) {
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', 15, 200, 180, 90); // posición fija
+    }
+
+    doc.save("evaluacion_ventas.pdf");
+  }
+</script>
+<script>
+function guardarConfiguracion() {
+  const inputs = document.querySelectorAll('input');
+  const valores = {};
+  inputs.forEach(input => {
+    valores[input.id] = input.value;
+  });
+  localStorage.setItem('configVentas', JSON.stringify(valores));
+  alert('Configuración guardada correctamente.');
+}
+
+function cargarConfiguracion() {
+  const guardado = localStorage.getItem('configVentas');
+  if (guardado) {
+    const valores = JSON.parse(guardado);
+    for (const id in valores) {
+      const input = document.getElementById(id);
+      if (input) {
+        input.value = valores[id];
+      }
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  cargarConfiguracion();
+  calcularVentas();
+});
+</script><script>
+function guardarConfiguracion() {
+  const nombre = prompt("Ingresa un nombre para esta configuración:");
+  if (!nombre) return;
+
+  const inputs = document.querySelectorAll('input');
+  const valores = {};
+  inputs.forEach(input => {
+    valores[input.id] = input.value;
+  });
+
+  let historial = JSON.parse(localStorage.getItem("historialConfigVentas") || "{}");
+  historial[nombre] = valores;
+  localStorage.setItem("historialConfigVentas", JSON.stringify(historial));
+  alert("Configuración guardada como: " + nombre);
+  actualizarHistorial();
+}
+
+function cargarConfiguracionPorNombre(nombre) {
+  const historial = JSON.parse(localStorage.getItem("historialConfigVentas") || "{}");
+  const valores = historial[nombre];
+  if (!valores) return;
+
+  for (const id in valores) {
+    const input = document.getElementById(id);
+    if (input) {
+      input.value = valores[id];
+    }
+  }
+  calcularVentas();
+}
+
+function eliminarConfiguracion(nombre) {
+  let historial = JSON.parse(localStorage.getItem("historialConfigVentas") || "{}");
+  delete historial[nombre];
+  localStorage.setItem("historialConfigVentas", JSON.stringify(historial));
+  actualizarHistorial();
+}
+
+function eliminarSeleccionados() {
+  const checks = document.querySelectorAll('.historial-checkbox:checked');
+  let historial = JSON.parse(localStorage.getItem("historialConfigVentas") || "{}");
+  checks.forEach(checkbox => {
+    delete historial[checkbox.value];
+  });
+  localStorage.setItem("historialConfigVentas", JSON.stringify(historial));
+  actualizarHistorial();
+}
+
+function eliminarTodo() {
+  if (confirm("¿Estás seguro de que deseas borrar todo el historial?")) {
+    localStorage.removeItem("historialConfigVentas");
+    actualizarHistorial();
+  }
+}
+
+function actualizarHistorial() {
+  const contenedor = document.getElementById("historial_configuraciones");
+  contenedor.innerHTML = "";
+
+  const historial = JSON.parse(localStorage.getItem("historialConfigVentas") || "{}");
+  for (const nombre in historial) {
+    const div = document.createElement("div");
+    div.className = "list-group-item d-flex justify-content-between align-items-center";
+
+    const label = document.createElement("span");
+    label.textContent = nombre;
+
+    const controls = document.createElement("div");
+    controls.className = "d-flex gap-2";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "form-check-input historial-checkbox";
+    checkbox.value = nombre;
+
+    const btnCargar = document.createElement("button");
+    btnCargar.textContent = "Cargar";
+    btnCargar.className = "btn btn-sm btn-success";
+    btnCargar.onclick = () => cargarConfiguracionPorNombre(nombre);
+
+    const btnEliminar = document.createElement("button");
+    btnEliminar.textContent = "Eliminar";
+    btnEliminar.className = "btn btn-sm btn-outline-danger";
+    btnEliminar.onclick = () => eliminarConfiguracion(nombre);
+
+    controls.appendChild(checkbox);
+    controls.appendChild(btnCargar);
+    controls.appendChild(btnEliminar);
+
+    div.appendChild(label);
+    div.appendChild(controls);
+
+    contenedor.appendChild(div);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  actualizarHistorial();
+});
+</script></body>
+</html>
